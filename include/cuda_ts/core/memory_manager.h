@@ -1,6 +1,7 @@
 #ifndef CUDA_TS_CORE_MEMORY_MANAGER_H
 #define CUDA_TS_CORE_MEMORY_MANAGER_H
 
+#include "cuda_ts/core/error_handler.h"
 #include <cuda_runtime.h>
 #include <memory>
 #include <cstddef>
@@ -26,7 +27,7 @@ public:
     
     
     DeviceMemory(const DeviceMemory&) = delete;
-    DeviceMemory&
+    DeviceMemory& operator=(const DeviceMemory&) = delete;
     
     DeviceMemory(DeviceMemory&& other) noexcept 
         : ptr_(other.ptr_), size_(other.size_) {

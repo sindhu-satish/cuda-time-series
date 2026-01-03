@@ -171,7 +171,7 @@ void acf_kernel(
         int lag = lags[lag_idx];
         if (lag < 0 || lag >= static_cast<int>(n)) {
             float nan_val = NAN;
-            CUDA_CHECK(cudaMemcpyAsync(&acf_output[lag_idx], &nan_val, sizeof(float),
+            CUDA_CHECK(cudaMemcpyAsync(acf_output.get() + lag_idx, &nan_val, sizeof(float),
                                         cudaMemcpyHostToDevice, stream));
             continue;
         }
@@ -194,7 +194,7 @@ void acf_kernel(
         autocov /= (n - lag);
         
         float acf_value = autocov / variance;
-        CUDA_CHECK(cudaMemcpyAsync(&acf_output[lag_idx], &acf_value, sizeof(float),
+        CUDA_CHECK(cudaMemcpyAsync(acf_output.get() + lag_idx, &acf_value, sizeof(float),
                                     cudaMemcpyHostToDevice, stream));
         delete[] host_acf_sums;
     }
