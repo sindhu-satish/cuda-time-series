@@ -19,14 +19,14 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
 # CUDA sources
 set(CUDA_SOURCES
     src/cuda/core/error_handler.cu
-    src/cuda/operators/rolling_mean.cu
-    src/cuda/operators/acf.cu   
+    src/cuda/operators/acf.cu
+    src/cuda/operators/rolling_stats.cu
 )
 
 # C++ sources
 set(CPP_SOURCES
-    src/cpp/operators/rolling_mean_wrapper.cpp
     src/cpp/operators/acf_wrapper.cpp
+    src/cpp/operators/rolling_stats_wrapper.cpp
 )
 
 # Create library

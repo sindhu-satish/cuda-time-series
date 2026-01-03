@@ -1,8 +1,10 @@
 
 
 #include "cuda_ts/core/timeseries.h"
-#include "cuda_ts/operators/rolling_mean_wrapper.h"
+#include "cuda_ts/operators/rolling_stats_wrapper.h"
 #include "cuda_ts/operators/acf_wrapper.h"
+#include "cuda_ts/operators/differencing_wrapper.h"
+#include "cuda_ts/operators/ema_wrapper.h"
 #include <iostream>
 #include <vector>
 #include <fstream>
@@ -147,6 +149,91 @@ int main() {
         float acf_val = cuda_ts::acf_single(ts, lag);
         std::cout << "ACF(lag=" << lag << ") = " << std::fixed << std::setprecision(6) 
                   << acf_val << "\n\n";
+        
+        // test 5: Rolling Standard Deviation
+        std::cout << "test 5: rolling standard deviation\n";
+        std::cout << "computing rolling std with window=" << window << "...\n";
+        auto rolling_std_result = cuda_ts::rolling_std(ts, window);
+        auto rolling_std_host = rolling_std_result.copy_to_host();
+        std::cout << "First 5 valid rolling std values:\n";
+        for (int i = window - 1; i < window + 4 && i < static_cast<int>(data.size()); ++i) {
+            std::cout << "  index " << std::setw(3) << i << ": std = " 
+                      << std::fixed << std::setprecision(2) << rolling_std_host[i] << "\n";
+        }
+        std::cout << "\n";
+        
+        // test 6: Rolling Variance
+        std::cout << "test 6: rolling variance\n";
+        auto rolling_var_result = cuda_ts::rolling_var(ts, window);
+        auto rolling_var_host = rolling_var_result.copy_to_host();
+        std::cout << "First 5 valid rolling variance values:\n";
+        for (int i = window - 1; i < window + 4 && i < static_cast<int>(data.size()); ++i) {
+            std::cout << "  index " << std::setw(3) << i << ": var = " 
+                      << std::fixed << std::setprecision(2) << rolling_var_host[i] << "\n";
+        }
+        std::cout << "\n";
+        
+        // test 7: Rolling Min/Max
+        std::cout << "test 7: rolling min and max\n";
+        auto rolling_min_result = cuda_ts::rolling_min(ts, window);
+        auto rolling_max_result = cuda_ts::rolling_max(ts, window);
+        auto rolling_min_host = rolling_min_result.copy_to_host();
+        auto rolling_max_host = rolling_max_result.copy_to_host();
+        std::cout << "Comparison at index " << (window + 5) << ":\n";
+        int idx = window + 5;
+        if (idx < static_cast<int>(data.size())) {
+            std::cout << "  original = " << std::setw(6) << data[idx] << "\n";
+            std::cout << "  min      = " << std::setw(6) << rolling_min_host[idx] << "\n";
+            std::cout << "  max      = " << std::setw(6) << rolling_max_host[idx] << "\n";
+            std::cout << "  range    = " << std::setw(6) 
+                      << (rolling_max_host[idx] - rolling_min_host[idx]) << "\n";
+        }
+        std::cout << "\n";
+        
+        // test 8: Rolling Z-Score
+        std::cout << "test 8: rolling z-score\n";
+        auto rolling_zscore_result = cuda_ts::rolling_zscore(ts, window);
+        auto rolling_zscore_host = rolling_zscore_result.copy_to_host();
+        std::cout << "First 5 valid rolling z-score values:\n";
+        for (int i = window - 1; i < window + 4 && i < static_cast<int>(data.size()); ++i) {
+            std::cout << "  index " << std::setw(3) << i << ": z-score = " 
+                      << std::fixed << std::setprecision(4) << rolling_zscore_host[i] << "\n";
+        }
+        std::cout << "\n";
+        
+        // test 9: Differencing
+        std::cout << "test 9: differencing (first-order, lag=1)\n";
+        auto diff_result = cuda_ts::differencing(ts, 1);
+        auto diff_host = diff_result.copy_to_host();
+        std::cout << "First 10 differenced values:\n";
+        for (int i = 1; i < 11 && i < static_cast<int>(data.size()); ++i) {
+            std::cout << "  index " << std::setw(3) << i << ": " 
+                      << std::setw(6) << data[i] << " - " 
+                      << std::setw(6) << data[i-1] << " = " 
+                      << std::setw(6) << diff_host[i] << "\n";
+        }
+        std::cout << "\n";
+        
+        // test 10: Exponential Moving Average
+        std::cout << "test 10: exponential moving average (EMA)\n";
+        int span = 12;  // 12-month span
+        std::cout << "computing EMA with span=" << span << "...\n";
+        auto ema_result = cuda_ts::ema(ts, span);
+        auto ema_host = ema_result.copy_to_host();
+        std::cout << "First 10 EMA values:\n";
+        for (int i = 0; i < 10 && i < static_cast<int>(data.size()); ++i) {
+            std::cout << "  index " << std::setw(3) << i << ": original = " 
+                      << std::setw(6) << data[i] << ", EMA = " 
+                      << std::setw(6) << ema_host[i] << "\n";
+        }
+        std::cout << "Last 5 EMA values:\n";
+        for (int i = std::max(0, static_cast<int>(data.size()) - 5); 
+             i < static_cast<int>(data.size()); ++i) {
+            std::cout << "  index " << std::setw(3) << i << ": original = " 
+                      << std::setw(6) << data[i] << ", EMA = " 
+                      << std::setw(6) << ema_host[i] << "\n";
+        }
+        std::cout << "\n";
         
         std::cout << "all tests completed successfully\n";
         return 0;

@@ -52,7 +52,7 @@ make
 
 ```cpp
 #include "cuda_ts/core/timeseries.h"
-#include "cuda_ts/operators/rolling_mean_wrapper.h"
+#include "cuda_ts/operators/rolling_stats_wrapper.h"
 #include "cuda_ts/operators/acf_wrapper.h"
 
 // Create TimeSeries from host data
