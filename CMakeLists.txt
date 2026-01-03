@@ -25,7 +25,6 @@ set(CUDA_SOURCES
 
 # C++ sources
 set(CPP_SOURCES
-    src/cpp/operators/operator_registry.cpp
     src/cpp/operators/rolling_mean_wrapper.cpp
     src/cpp/operators/acf_wrapper.cpp
 )

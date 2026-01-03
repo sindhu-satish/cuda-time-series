@@ -36,6 +36,7 @@ A high-performance, CUDA-accelerated time series feature extraction library with
 ### Building
 
 ```bash
+apt-get update && apt-get install -y cmake build-essential // if cmake is not installed
 mkdir build && cd build
 cmake ..
 make
