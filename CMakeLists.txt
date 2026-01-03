@@ -76,3 +76,27 @@ install(TARGETS cuda_ts_lib
 
 install(DIRECTORY include/ DESTINATION include)
 
+# Find pybind11
+find_package(pybind11 QUIET)
+if(NOT pybind11_FOUND)
+    # Fallback: download pybind11
+    include(FetchContent)
+    FetchContent_Declare(
+        pybind11
+        GIT_REPOSITORY https://github.com/pybind/pybind11.git
+        GIT_TAG v2.11.1
+    )
+    FetchContent_MakeAvailable(pybind11)
+endif()
+
+# Python bindings module
+pybind11_add_module(cuda_ts_py
+    src/python/bindings.cpp
+)
+
+target_link_libraries(cuda_ts_py PRIVATE
+    cuda_ts_lib
+    CUDA::cudart
+    CUDA::cufft
+    CUDA::cublas
+)
