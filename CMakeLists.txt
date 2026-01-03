@@ -20,8 +20,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
 set(CUDA_SOURCES
     src/cuda/core/error_handler.cu
     src/cuda/operators/rolling_mean.cu
-    src/cuda/operators/acf.cu
-    src/cuda/operators/fft_bands.cu
+    src/cuda/operators/acf.cu   
 )
 
 # C++ sources
@@ -29,7 +28,6 @@ set(CPP_SOURCES
     src/cpp/operators/operator_registry.cpp
     src/cpp/operators/rolling_mean_wrapper.cpp
     src/cpp/operators/acf_wrapper.cpp
-    src/cpp/operators/fft_bands_wrapper.cpp
 )
 
 # Create library
@@ -60,6 +58,13 @@ target_compile_options(cuda_ts_lib PRIVATE
 set_target_properties(cuda_ts_lib PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
     LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+)
+
+# Test executables
+add_executable(test_airpassengers examples/test_airpassengers.cpp)
+target_link_libraries(test_airpassengers cuda_ts_lib)
+set_target_properties(test_airpassengers PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
 )
 
