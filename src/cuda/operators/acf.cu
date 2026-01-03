@@ -137,7 +137,6 @@ void acf_kernel(
         mean += host_sums[i];
     }
     mean /= n;
-    delete[] host_sums;
     
     // compute variance
     compute_variance_kernel<<<blocks, threads_per_block, shared_mem, stream>>>(
@@ -155,7 +154,7 @@ void acf_kernel(
         variance += host_sums[i];
     }
     variance /= n;
-    delete[] host_sums;
+    delete[] host_sums;  // Delete only once after both uses
     
     if (variance < 1e-10f) {
         // if zero variance, set all ACF to 0
