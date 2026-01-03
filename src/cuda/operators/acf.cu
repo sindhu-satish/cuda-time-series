@@ -162,12 +162,17 @@ void acf_kernel(
         return;
     }
     
+    int* host_lags = new int[num_lags];
+    CUDA_CHECK(cudaMemcpyAsync(host_lags, lags, num_lags * sizeof(int),
+                                cudaMemcpyDeviceToHost, stream));
+    CUDA_CHECK(cudaStreamSynchronize(stream));
+    
     // compute ACF for each lag
     DeviceMemory<float> acf_block_sums(blocks);
     DeviceMemory<float> acf_output(num_lags);
     
     for (int lag_idx = 0; lag_idx < num_lags; ++lag_idx) {
-        int lag = lags[lag_idx];
+        int lag = host_lags[lag_idx];
         if (lag < 0 || lag >= static_cast<int>(n)) {
             float nan_val = NAN;
             CUDA_CHECK(cudaMemcpyAsync(acf_output.get() + lag_idx, &nan_val, sizeof(float),
@@ -200,6 +205,8 @@ void acf_kernel(
     
     CUDA_CHECK(cudaMemcpyAsync(output, acf_output.get(), num_lags * sizeof(float),
                                 cudaMemcpyDeviceToDevice, stream));
+    
+    delete[] host_lags;
 }
 
 } 
