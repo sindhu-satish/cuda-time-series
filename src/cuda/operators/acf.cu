@@ -243,6 +243,7 @@ void acf_kernel(
     if (stream) {
         CUDA_CHECK(cudaMemcpyAsync(output, acf_output.get(), num_lags * sizeof(float),
                                     cudaMemcpyDeviceToDevice, stream));
+        CUDA_CHECK(cudaStreamSynchronize(stream));
     } else {
         CUDA_CHECK(cudaMemcpy(output, acf_output.get(), num_lags * sizeof(float),
                               cudaMemcpyDeviceToDevice));

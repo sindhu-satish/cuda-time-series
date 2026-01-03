@@ -19,24 +19,37 @@ std::vector<float> acf(const TimeSeries& input, const std::vector<int>& lags, cu
     DeviceMemory<float> output(lags.size());
     
     DeviceMemory<int> lags_dev(lags.size());
-    CUDA_CHECK(cudaMemcpyAsync(lags_dev.get(), lags.data(),
-                               lags.size() * sizeof(int),
-                               cudaMemcpyHostToDevice, stream ? stream : cudaStreamDefault));
+    if (stream) {
+        CUDA_CHECK(cudaMemcpyAsync(lags_dev.get(), lags.data(),
+                                   lags.size() * sizeof(int),
+                                   cudaMemcpyHostToDevice, stream));
+    } else {
+        CUDA_CHECK(cudaMemcpy(lags_dev.get(), lags.data(),
+                              lags.size() * sizeof(int),
+                              cudaMemcpyHostToDevice));
+    }
     
     // launch GPU kernel
     acf_kernel(input.data(), output.get(), input.size(),
                lags_dev.get(), static_cast<int>(lags.size()), stream);
     
-    std::vector<float> results(lags.size());
-    CUDA_CHECK(cudaMemcpyAsync(results.data(), output.get(),
-                              lags.size() * sizeof(float),
-                              cudaMemcpyDeviceToHost, stream ? stream : cudaStreamDefault));
-    
-    // synchronize to ensure data is ready
+    // Synchronize before copying results back
     if (stream) {
         CUDA_CHECK(cudaStreamSynchronize(stream));
     } else {
         CUDA_CHECK(cudaDeviceSynchronize());
+    }
+    
+    std::vector<float> results(lags.size());
+    if (stream) {
+        CUDA_CHECK(cudaMemcpyAsync(results.data(), output.get(),
+                                  lags.size() * sizeof(float),
+                                  cudaMemcpyDeviceToHost, stream));
+        CUDA_CHECK(cudaStreamSynchronize(stream));
+    } else {
+        CUDA_CHECK(cudaMemcpy(results.data(), output.get(),
+                             lags.size() * sizeof(float),
+                             cudaMemcpyDeviceToHost));
     }
     
     return results;
