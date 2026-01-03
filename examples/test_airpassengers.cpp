@@ -76,8 +76,8 @@ int main() {
         std::cout << "TimeSeries created with size=" << ts.size() << "\n\n";
         
         // test 1: Rolling Mean
-        std::cout << "test 1: rolling mean with window=" << window << " (1 year)\n";
         int window = 12;  // 12 months 
+        std::cout << "test 1: rolling mean with window=" << window << " (1 year)\n";
         std::cout << "computing rolling mean with window=" << window << " (1 year)...\n";
         
         auto rolling_result = cuda_ts::rolling_mean(ts, window);
