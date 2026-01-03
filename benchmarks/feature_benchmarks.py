@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import sys
 import os
+import argparse
 from typing import Dict, List, Tuple, Any
 import statistics
 
@@ -32,18 +33,23 @@ class BenchmarkResult:
                 f"speedup={self.speedup:.2f}x, accuracy={self.accuracy:.6f})")
 
 
-def generate_test_data(size: int = 10000) -> np.ndarray:
-    """Generate synthetic time series data"""
-    np.random.seed(42)
-    trend = np.linspace(0, 100, size)
-    noise = np.random.normal(0, 5, size)
-    seasonal = 10 * np.sin(2 * np.pi * np.arange(size) / 365)
-    return trend + seasonal + noise
+def load_airpassengers(filename: str = None) -> np.ndarray:
+    """Load AirPassengers dataset from CSV file"""
+    df = pd.read_csv(filename)
+    
+    if len(df.columns) < 2:
+        raise ValueError("CSV file must have at least 2 columns")
+    
+    # get the passenger column 
+    passenger_col = df.iloc[:, 1]  
+    data = passenger_col.values.astype(np.float32)
+    
+    return data
 
 
 def benchmark_rolling_mean(data: np.ndarray, window: int = 20, 
                            iterations: int = 10) -> BenchmarkResult:
-    """Benchmark rolling mean operation"""
+    """benchmark rolling mean operation"""
     name = f"rolling_mean(window={window}, size={len(data)})"
     
     cuda_times = []
@@ -86,7 +92,7 @@ def benchmark_rolling_mean(data: np.ndarray, window: int = 20,
 
 def benchmark_rolling_std(data: np.ndarray, window: int = 20,
                            iterations: int = 10) -> BenchmarkResult:
-    """Benchmark rolling standard deviation"""
+    """benchmark rolling standard deviation"""
     name = f"rolling_std(window={window}, size={len(data)})"
     
     # CUDA 
@@ -132,7 +138,7 @@ def benchmark_rolling_std(data: np.ndarray, window: int = 20,
 
 def benchmark_acf(data: np.ndarray, lags: List[int] = [1, 5, 10, 20],
                  iterations: int = 10) -> BenchmarkResult:
-    """Benchmark autocorrelation function"""
+    """benchmark autocorrelation function"""
     name = f"acf(lags={lags}, size={len(data)})"
     
     # CUDA 
@@ -182,30 +188,37 @@ def benchmark_acf(data: np.ndarray, lags: List[int] = [1, 5, 10, 20],
 
 
 
-def run_all_benchmarks(data_sizes: List[int] = [1000, 10000, 100000],
-                       iterations: int = 10) -> List[BenchmarkResult]:
-    """Run all benchmarks for different data sizes"""
+def run_all_benchmarks(iterations: int = 10,
+                       csv_filepath: str = None) -> List[BenchmarkResult]:
+    """Run all benchmarks using CSV dataset"""
     results = []
     
-    for size in data_sizes:
-        print(f"\n{'='*60}")
-        print(f"Running benchmarks for data size: {size}")
-        print(f"{'='*60}")
-        
-        data = generate_test_data(size)
-        
-        
-        print(f"Benchmarking rolling_mean...")
-        results.append(benchmark_rolling_mean(data, window=20, iterations=iterations))
-        
-        
-        print(f"Benchmarking rolling_std...")
-        results.append(benchmark_rolling_std(data, window=20, iterations=iterations))
-        
-        
-        print(f"Benchmarking acf...")
-        results.append(benchmark_acf(data, lags=[1, 5, 10, 20], iterations=iterations))
-        
+    print(f"\n{'='*10}")
+    if csv_filepath:
+        print(f"loading dataset from: {csv_filepath}")
+    else:
+        print("loading AirPassengers.csv dataset...")
+    print(f"{'='*10}")
+    
+    data = load_airpassengers(csv_filepath)
+    filename = csv_filepath if csv_filepath else "AirPassengers.csv"
+    print(f"loaded {len(data)} data points from {filename}")
+    print(f"data range: [{data.min():.2f}, {data.max():.2f}]")
+    print(f"data mean: {data.mean():.2f}")
+    print(f"data std: {data.std():.2f}")
+    
+    print(f"\n{'='*10}")
+    print(f"running benchmarks for dataset (size={len(data)})")
+    print(f"{'='*10}")
+    
+    print(f"benchmarking rolling_mean...")
+    results.append(benchmark_rolling_mean(data, window=12, iterations=iterations))
+    
+    print(f"benchmarking rolling_std...")
+    results.append(benchmark_rolling_std(data, window=12, iterations=iterations))
+    
+    print(f"benchmarking acf...")
+    results.append(benchmark_acf(data, lags=[1, 5, 10, 12, 24], iterations=iterations))
     
     return results
 
@@ -230,20 +243,62 @@ def print_results(results: List[BenchmarkResult]):
 
 
 if __name__ == "__main__":
-    print("CUDA Timeseries benchmarking")
+    parser = argparse.ArgumentParser(
+        description="CUDA Timeseries benchmarking framework",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python feature_benchmarks.py
+  python feature_benchmarks.py --file AirPassengers.csv
+  python feature_benchmarks.py --file /path/to/data.csv --iterations 10
+        """
+    )
+    parser.add_argument(
+        '--file', '-f',
+        type=str,
+        default=None,
+        help='Path to CSV file to use for benchmarking (default: auto-detect AirPassengers.csv)'
+    )
+    parser.add_argument(
+        '--iterations', '-i',
+        type=int,
+        default=5,
+        help='Number of iterations per benchmark (default: 5)'
+    )
+    
+    args = parser.parse_args()
+    
+    print("CUDA Timeseries benchmarking framework")
     
     if not CUDA_TS_AVAILABLE:
         print("WARNING: cuda_ts_py module not found. Only CPU benchmarks will run.")
         print("Build the Python module first: mkdir build && cd build && cmake .. && make")
         print()
-    results = run_all_benchmarks(data_sizes=[1000, 10000, 100000], iterations=5)
+    
+    
+    try:
+        results = run_all_benchmarks(
+            iterations=args.iterations,
+            csv_filepath=args.file
+        )
+    except FileNotFoundError as e:
+        print(f"\nERROR: {e}")
+        print("Please provide a valid CSV file using --file option.")
+        sys.exit(1)
+    
+    
     print_results(results)
+    
     
     if CUDA_TS_AVAILABLE:
         speedups = [r.speedup for r in results if r.speedup]
         if speedups:
-            print(f"\nAverage speedup: {statistics.mean(speedups):.2f}x")
-            print(f"Median speedup: {statistics.median(speedups):.2f}x")
-            print(f"Max speedup: {max(speedups):.2f}x")
-            print(f"Min speedup: {min(speedups):.2f}x")
+            print(f"\n{'='*10}")
+            print("SUMMARY STATISTICS")
+            print(f"{'='*10}")
+            print(f"average speedup: {statistics.mean(speedups):.2f}x")
+            print(f"median speedup: {statistics.median(speedups):.2f}x")
+            print(f"max speedup: {max(speedups):.2f}x")
+            print(f"min speedup: {min(speedups):.2f}x")
+            print(f"{'='*10}")
 
