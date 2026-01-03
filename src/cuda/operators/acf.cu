@@ -127,10 +127,16 @@ void acf_kernel(
     
     // TODO: Replace simple host-side reduction with proper device-side reduction for mean computation
     float* host_sums = new float[blocks];
-    CUDA_CHECK(cudaMemcpyAsync(host_sums, block_sums.get(), 
-                                blocks * sizeof(float), 
-                                cudaMemcpyDeviceToHost, stream));
-    CUDA_CHECK(cudaStreamSynchronize(stream));
+    if (stream) {
+        CUDA_CHECK(cudaMemcpyAsync(host_sums, block_sums.get(), 
+                                    blocks * sizeof(float), 
+                                    cudaMemcpyDeviceToHost, stream));
+        CUDA_CHECK(cudaStreamSynchronize(stream));
+    } else {
+        CUDA_CHECK(cudaMemcpy(host_sums, block_sums.get(), 
+                               blocks * sizeof(float), 
+                               cudaMemcpyDeviceToHost));
+    }
     
     float mean = 0.0f;
     for (int i = 0; i < blocks; ++i) {
@@ -144,10 +150,16 @@ void acf_kernel(
     );
     KERNEL_CHECK("compute_variance_kernel");
     
-    CUDA_CHECK(cudaMemcpyAsync(host_sums, block_sums.get(), 
-                                blocks * sizeof(float), 
-                                cudaMemcpyDeviceToHost, stream));
-    CUDA_CHECK(cudaStreamSynchronize(stream));
+    if (stream) {
+        CUDA_CHECK(cudaMemcpyAsync(host_sums, block_sums.get(), 
+                                    blocks * sizeof(float), 
+                                    cudaMemcpyDeviceToHost, stream));
+        CUDA_CHECK(cudaStreamSynchronize(stream));
+    } else {
+        CUDA_CHECK(cudaMemcpy(host_sums, block_sums.get(), 
+                               blocks * sizeof(float), 
+                               cudaMemcpyDeviceToHost));
+    }
     
     float variance = 0.0f;
     for (int i = 0; i < blocks; ++i) {
@@ -158,14 +170,23 @@ void acf_kernel(
     
     if (variance < 1e-10f) {
         // if zero variance, set all ACF to 0
-        CUDA_CHECK(cudaMemsetAsync(output, 0, num_lags * sizeof(float), stream));
+        if (stream) {
+            CUDA_CHECK(cudaMemsetAsync(output, 0, num_lags * sizeof(float), stream));
+        } else {
+            CUDA_CHECK(cudaMemset(output, 0, num_lags * sizeof(float)));
+        }
         return;
     }
     
     int* host_lags = new int[num_lags];
-    CUDA_CHECK(cudaMemcpyAsync(host_lags, lags, num_lags * sizeof(int),
-                                cudaMemcpyDeviceToHost, stream));
-    CUDA_CHECK(cudaStreamSynchronize(stream));
+    if (stream) {
+        CUDA_CHECK(cudaMemcpyAsync(host_lags, lags, num_lags * sizeof(int),
+                                    cudaMemcpyDeviceToHost, stream));
+        CUDA_CHECK(cudaStreamSynchronize(stream));
+    } else {
+        CUDA_CHECK(cudaMemcpy(host_lags, lags, num_lags * sizeof(int),
+                              cudaMemcpyDeviceToHost));
+    }
     
     // compute ACF for each lag
     DeviceMemory<float> acf_block_sums(blocks);
@@ -175,8 +196,13 @@ void acf_kernel(
         int lag = host_lags[lag_idx];
         if (lag < 0 || lag >= static_cast<int>(n)) {
             float nan_val = NAN;
-            CUDA_CHECK(cudaMemcpyAsync(acf_output.get() + lag_idx, &nan_val, sizeof(float),
-                                        cudaMemcpyHostToDevice, stream));
+            if (stream) {
+                CUDA_CHECK(cudaMemcpyAsync(acf_output.get() + lag_idx, &nan_val, sizeof(float),
+                                            cudaMemcpyHostToDevice, stream));
+            } else {
+                CUDA_CHECK(cudaMemcpy(acf_output.get() + lag_idx, &nan_val, sizeof(float),
+                                      cudaMemcpyHostToDevice));
+            }
             continue;
         }
         
@@ -186,10 +212,16 @@ void acf_kernel(
         KERNEL_CHECK("acf_lag_kernel");
         
         float* host_acf_sums = new float[blocks];
-        CUDA_CHECK(cudaMemcpyAsync(host_acf_sums, acf_block_sums.get(),
-                                    blocks * sizeof(float),
-                                    cudaMemcpyDeviceToHost, stream));
-        CUDA_CHECK(cudaStreamSynchronize(stream));
+        if (stream) {
+            CUDA_CHECK(cudaMemcpyAsync(host_acf_sums, acf_block_sums.get(),
+                                        blocks * sizeof(float),
+                                        cudaMemcpyDeviceToHost, stream));
+            CUDA_CHECK(cudaStreamSynchronize(stream));
+        } else {
+            CUDA_CHECK(cudaMemcpy(host_acf_sums, acf_block_sums.get(),
+                                  blocks * sizeof(float),
+                                  cudaMemcpyDeviceToHost));
+        }
         
         float autocov = 0.0f;
         for (int i = 0; i < blocks; ++i) {
@@ -198,13 +230,23 @@ void acf_kernel(
         autocov /= (n - lag);
         
         float acf_value = autocov / variance;
-        CUDA_CHECK(cudaMemcpyAsync(acf_output.get() + lag_idx, &acf_value, sizeof(float),
-                                    cudaMemcpyHostToDevice, stream));
+        if (stream) {
+            CUDA_CHECK(cudaMemcpyAsync(acf_output.get() + lag_idx, &acf_value, sizeof(float),
+                                        cudaMemcpyHostToDevice, stream));
+        } else {
+            CUDA_CHECK(cudaMemcpy(acf_output.get() + lag_idx, &acf_value, sizeof(float),
+                                  cudaMemcpyHostToDevice));
+        }
         delete[] host_acf_sums;
     }
     
-    CUDA_CHECK(cudaMemcpyAsync(output, acf_output.get(), num_lags * sizeof(float),
-                                cudaMemcpyDeviceToDevice, stream));
+    if (stream) {
+        CUDA_CHECK(cudaMemcpyAsync(output, acf_output.get(), num_lags * sizeof(float),
+                                    cudaMemcpyDeviceToDevice, stream));
+    } else {
+        CUDA_CHECK(cudaMemcpy(output, acf_output.get(), num_lags * sizeof(float),
+                              cudaMemcpyDeviceToDevice));
+    }
     
     delete[] host_lags;
 }
