@@ -25,13 +25,13 @@ A high-performance, CUDA-accelerated time series feature extraction library with
 - `rolling_mean`, `rolling_std`, `rolling_var`, `rolling_min`, `rolling_max`, `rolling_zscore` - Rolling statistics
 - `acf` - Autocorrelation function for specified lags
 
-### Python API (Phase 5)
+### Python API 
 - **Python bindings** using pybind11
 - NumPy array integration
 - High-level Python API matching C++ functionality
 - See `examples/python_example.py` for usage
 
-### Benchmarking Framework (Phase 6)
+### Benchmarking Framework 
 - Performance comparison against pandas/numpy
 - Speedup measurements
 - Accuracy validation
