@@ -35,7 +35,8 @@ A high-performance, CUDA-accelerated time series feature extraction library with
 - Performance comparison against pandas/numpy
 - Speedup measurements
 - Accuracy validation
-- See `benchmarks/feature_benchmarks.py`
+- Multiple data size testing (1K, 10K, 100K points)
+- Statistical aggregation (median times, summary stats)
 
 ### Testing
 - `test_airpassengers.cpp` - Test program using real-world AirPassengers dataset
@@ -76,9 +77,41 @@ python examples/python_example.py
 
 **Benchmarks:**
 ```bash
+# Install Python dependencies
+pip install numpy pandas
+
+# Run benchmarks
 cd benchmarks
 python feature_benchmarks.py
 ```
+
+The benchmark script compares CUDA implementations against pandas/numpy and outputs:
+- **CUDA time**: Time taken by CUDA implementation
+- **CPU time**: Time taken by pandas/numpy implementation
+- **Speedup**: CPU time / CUDA time ratio
+- **Accuracy**: Normalized accuracy metric (1.0 = perfect match)
+
+Benchmarks are run for:
+- Rolling statistics (mean, std) vs pandas
+- ACF vs numpy correlation
+- Multiple data sizes (1K, 10K, 100K points)
+- Multiple iterations with median time reporting
+
+### Customizing Benchmarks
+
+You can modify `benchmarks/feature_benchmarks.py` to:
+- Change data sizes: `run_all_benchmarks(data_sizes=[1000, 10000, 100000])`
+- Change number of iterations: `iterations=10`
+- Add custom test data
+- Add new benchmark functions
+
+### Performance Metrics
+
+The framework measures:
+- **Throughput**: Points processed per second
+- **Latency**: Time per operation (median times)
+- **Speedup**: Ratio of CPU time to GPU time
+- **Accuracy**: Numerical precision compared to reference (RMSE-based)
 
 ### Usage Examples
 
@@ -119,9 +152,13 @@ acf_values = cuda_ts_py.acf(ts, [1, 5, 10, 20])
 # Compute rolling statistics
 rolling_std = cuda_ts_py.rolling_std(ts, 20)
 rolling_var = cuda_ts_py.rolling_var(ts, 20)
+rolling_min = cuda_ts_py.rolling_min(ts, 20)
+rolling_max = cuda_ts_py.rolling_max(ts, 20)
+rolling_zscore = cuda_ts_py.rolling_zscore(ts, 20)
 
-# Differencing and EMA
-diff = cuda_ts_py.differencing(ts, 1)
-ema = cuda_ts_py.ema(ts, 10)
+# Multiple rolling windows
+multi_rolling = cuda_ts_py.rolling_mean_multi(ts, [10, 20, 50])
 ```
+<｜tool▁calls▁begin｜><｜tool▁call▁begin｜>
+delete_file
 
