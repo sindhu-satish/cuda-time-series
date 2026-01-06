@@ -159,6 +159,4 @@ rolling_zscore = cuda_ts_py.rolling_zscore(ts, 20)
 # Multiple rolling windows
 multi_rolling = cuda_ts_py.rolling_mean_multi(ts, [10, 20, 50])
 ```
-<｜tool▁calls▁begin｜><｜tool▁call▁begin｜>
-delete_file
 
